@@ -1,0 +1,5 @@
+{
+    "sketch": "DCMemoryTests.ino",
+    "board": "arduino:avr:uno",
+    "port": "COM5"
+}

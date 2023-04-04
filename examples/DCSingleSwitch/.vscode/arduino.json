@@ -1,0 +1,4 @@
+{
+    "sketch": "DCSingleSwitch.ino",
+    "board": "arduino:avr:uno"
+}

@@ -1,0 +1,7 @@
+{
+    "sketch": "DCDoubleDimmer.ino",
+    "board": "arduino:avr:nano",
+    "port": "COM14",
+    "configuration": "cpu=atmega328old",
+    "outputPath": "C:\\outputPath"
+}

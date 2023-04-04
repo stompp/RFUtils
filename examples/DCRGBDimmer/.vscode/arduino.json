@@ -1,0 +1,4 @@
+{
+    "sketch": "DCRGBDimmer.ino",
+    "board": "arduino:avr:uno"
+}
