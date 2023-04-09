@@ -6,12 +6,12 @@
 #include <bit_array.h>
 
 #ifdef ARDUINO
-
+#include <avr/pgmspace.h>
 #if defined(ESP8266) || defined(ESP32)
 // interrupt handlers and related code must be in RAM
 // ICACHE_RAM_ATTR is deprecated
 #define ISR_ATTR IRAM_ATTR
-#else 
+#else
 #define ISR_ATTR
 #endif
 
@@ -28,11 +28,11 @@ using namespace std;
 #define DOOYA_DC_DEBUG 0
 
 #ifndef DC_SEND_REPEATS
-#define DC_SEND_REPEATS 4
+#define DC_SEND_REPEATS 8
 #endif
 
 #ifndef DC_SEND_REPEAT_DELAY
-#define DC_SEND_REPEAT_DELAY 400UL
+#define DC_SEND_REPEAT_DELAY 100UL
 #endif
 
 #ifndef DC_REPETITION_BOUNCE
@@ -45,11 +45,46 @@ using namespace std;
 #ifndef DC_MEMORY_SIZE
 #define DC_MEMORY_SIZE 10
 #endif
+
 // #define DC_ADDRESS_CHUNKS 4
 /**
  * @brief
  *
  */
+// const char M_STRING[] PROGMEM = "M";
+// const char P2_STRING[] PROGMEM = "P2";
+// const char UP_PRESSED_STRING[] PROGMEM = "UP_PRESSED";
+// const char UP_RELEASED_STRING[] PROGMEM = "UP_RELEASED";
+// const char STOP_STRING[] PROGMEM = "STOP";
+// const char DOWN_PRESSED_STRING[] PROGMEM = "DOWN_PRESSED";
+// const char DOWN_RELEASED_STRING[] PROGMEM = "DOWN_RELEASED";
+// const char UP_AND_STOP_STRING[] PROGMEM = "UP_AND_STOP";
+// const char DOWN_AND_STOP_STRING[] PROGMEM = "DOWN_AND_STOP";
+// const char UP_AND_DOWN_STRING[] PROGMEM = "UP_AND_DOWN";
+// const char UP_AND_STOP_AND_DOWN_STRING[] PROGMEM = "UP_AND_STOP_AND_DOWN";
+// const char HEARTBEAT_STRING[] PROGMEM = "HEARTBEAT";
+// const char WIND_ALARM_STRING[] PROGMEM = "WIND_ALARM";
+// const char SENSOR_DOWN_STRING[] PROGMEM = "SENSOR_DOWN";
+// const char SENSOR_UP_STRING[] PROGMEM = "SENSOR_UP";
+// const char UNKNOWN_STRING[] PROGMEM = "UNKNOWN";
+
+const char M_STRING[] = "M";
+const char P2_STRING[] = "P2";
+const char UP_PRESSED_STRING[] = "UP_PRESSED";
+const char UP_RELEASED_STRING[] = "UP_RELEASED";
+const char STOP_STRING[] = "STOP";
+const char DOWN_PRESSED_STRING[] = "DOWN_PRESSED";
+const char DOWN_RELEASED_STRING[] = "DOWN_RELEASED";
+const char UP_AND_STOP_STRING[] = "UP_AND_STOP";
+const char DOWN_AND_STOP_STRING[] = "DOWN_AND_STOP";
+const char UP_AND_DOWN_STRING[] = "UP_AND_DOWN";
+const char UP_AND_STOP_AND_DOWN_STRING[] = "UP_AND_STOP_AND_DOWN";
+const char HEARTBEAT_STRING[] = "HEARTBEAT";
+const char WIND_ALARM_STRING[] = "WIND_ALARM";
+const char SENSOR_DOWN_STRING[] = "SENSOR_DOWN";
+const char SENSOR_UP_STRING[] = "SENSOR_UP";
+const char UNKNOWN_STRING[] = "UNKNOWN";
+
 struct DOOYA_DC
 {
 
@@ -151,17 +186,10 @@ struct DOOYA_DC
     static const uint8_t UP_AND_STOP_AND_DOWN = 0b01000001;
     static const uint8_t HEARTBEAT = 0b10001001;
     static const uint8_t WIND_ALARM = 0b11101001;
-
     static const uint8_t SENSOR_UP = 0b10101001;
-
     static const uint8_t SENSOR_DOWN = 0b11001001;
 
     static const unsigned long ADDRESS_MAX = 0X0fffffff;
-
-    // const uint8_t array[3][3] = {
-    //     {P2, P2, UP_PRESS},
-    //     {P2, P2, STOP},
-    //     {P2, P2, DOWN_PRESS}};
 
     static bool isP2(uint8_t &code)
     {
@@ -172,110 +200,110 @@ struct DOOYA_DC
     {
         return ((code != M) && (code != P2));
     }
-#ifdef ARDUINO
-    static String getCommandString(uint8_t command)
+    // #ifdef RPI
+    static const char *getCommandString(uint8_t command)
     {
         switch (command)
         {
         case DOOYA_DC::M:
-            return "M";
-
+            return M_STRING;
         case DOOYA_DC::P2:
-            return "P2";
-
+            return P2_STRING;
         case DOOYA_DC::UP_PRESS:
-            return "UP PRESSED";
-
+            return UP_PRESSED_STRING;
         case DOOYA_DC::UP_RELEASE:
-            return "UP RELEASED";
-
+            return UP_RELEASED_STRING;
         case DOOYA_DC::STOP:
-            return "STOP";
-
+            return STOP_STRING;
         case DOOYA_DC::DOWN_PRESS:
-            return "DOWN PRESSED";
-
+            return DOWN_PRESSED_STRING;
         case DOOYA_DC::DOWN_RELEASE:
-            return "DOWN RELEASED";
-
+            return DOWN_RELEASED_STRING;
         case DOOYA_DC::UP_AND_STOP:
-            return "UP AND STOP";
-
+            return UP_AND_STOP_STRING;
         case DOOYA_DC::DOWN_AND_STOP:
-            return "DOWN AND STOP";
-
+            return DOWN_AND_STOP_STRING;
         case DOOYA_DC::UP_AND_DOWN:
-            return "UP AND DOWN";
+            return UP_AND_DOWN_STRING;
         case DOOYA_DC::UP_AND_STOP_AND_DOWN:
-            return "UP+STOP+DOWN";
+            return UP_AND_STOP_AND_DOWN_STRING;
         case DOOYA_DC::HEARTBEAT:
-            return "HEARTBEAT";
+            return HEARTBEAT_STRING;
         case DOOYA_DC::WIND_ALARM:
-            return "WIND_ALARM";
+            return WIND_ALARM_STRING;
         case DOOYA_DC::SENSOR_DOWN:
-            return "SENSOR_DOWN";
+            return SENSOR_DOWN_STRING;
         case DOOYA_DC::SENSOR_UP:
-            return "SENSOR_UP";
+            return SENSOR_UP_STRING;
 
         default:
 
             break;
         }
-        return "unknown";
+        return UNKNOWN_STRING;
     }
-#else
-    static string getCommandString(uint8_t command)
-    {
-        switch (command)
-        {
-        case DOOYA_DC::M:
-            return "M";
-
-        case DOOYA_DC::P2:
-            return "P2";
-
-        case DOOYA_DC::UP_PRESS:
-            return "UP PRESSED";
-
-        case DOOYA_DC::UP_RELEASE:
-            return "UP RELEASED";
-
-        case DOOYA_DC::STOP:
-            return "STOP";
-
-        case DOOYA_DC::DOWN_PRESS:
-            return "DOWN PRESSED";
-
-        case DOOYA_DC::DOWN_RELEASE:
-            return "DOWN RELEASED";
-
-        case DOOYA_DC::UP_AND_STOP:
-            return "UP AND STOP";
-
-        case DOOYA_DC::DOWN_AND_STOP:
-            return "DOWN AND STOP";
-
-        case DOOYA_DC::UP_AND_DOWN:
-            return "UP AND DOWN";
-        case DOOYA_DC::UP_AND_STOP_AND_DOWN:
-            return "UP+STOP+DOWN";
-        case DOOYA_DC::HEARTBEAT:
-            return "HEARTBEAT";
-        case DOOYA_DC::WIND_ALARM:
-            return "WIND_ALARM";
-        case DOOYA_DC::SENSOR_DOWN:
-            return "SENSOR_DOWN";
-        case DOOYA_DC::SENSOR_UP:
-            return "SENSOR_UP";
-
-        default:
-
-            break;
-        }
-        return "unknown";
-    }
-#endif
 };
+
+#ifdef RPI
+#define DC_N_BASE_COMMANDS 15
+struct DCBaseCommand
+{
+
+    uint8_t cmnd;
+    const char *str;
+};
+
+const DCBaseCommand DC_BASE_COMMANDS_DATA[DC_N_BASE_COMMANDS] = {
+
+    {DOOYA_DC::M, M_STRING},
+    {DOOYA_DC::P2, P2_STRING},
+    {DOOYA_DC::UP_PRESS, UP_PRESSED_STRING},
+    {DOOYA_DC::UP_RELEASE, UP_RELEASED_STRING},
+    {DOOYA_DC::STOP, STOP_STRING},
+    {DOOYA_DC::DOWN_PRESS, DOWN_PRESSED_STRING},
+    {DOOYA_DC::DOWN_RELEASE, DOWN_RELEASED_STRING},
+    {DOOYA_DC::UP_AND_STOP, UP_AND_STOP_STRING},
+    {DOOYA_DC::DOWN_AND_STOP, DOWN_AND_STOP_STRING},
+    {DOOYA_DC::UP_AND_DOWN, UP_AND_DOWN_STRING},
+    {DOOYA_DC::UP_AND_STOP_AND_DOWN, UP_AND_STOP_AND_DOWN_STRING},
+    {DOOYA_DC::HEARTBEAT, HEARTBEAT_STRING},
+    {DOOYA_DC::WIND_ALARM, WIND_ALARM_STRING},
+    {DOOYA_DC::SENSOR_DOWN, SENSOR_DOWN_STRING},
+    {DOOYA_DC::SENSOR_UP, SENSOR_UP_STRING}};
+
+uint8_t getDCCommandForString(const char *s)
+{
+    for (uint8_t n = 0; n < DC_N_BASE_COMMANDS; n++)
+    {
+        if (strcmp(s, DC_BASE_COMMANDS_DATA[n].str) == 0)
+        {
+
+            return DC_BASE_COMMANDS_DATA[n].cmnd;
+        }
+    }
+    return 0;
+}
+
+const char *getDCCommandStringForCommand(uint8_t c)
+{
+
+    for (uint8_t n = 0; n < DC_N_BASE_COMMANDS; n++)
+    {
+        if (DC_BASE_COMMANDS_DATA[n].cmnd == c)
+            return DC_BASE_COMMANDS_DATA[n].str;
+    }
+    return UNKNOWN_STRING;
+}
+
+#endif
+
+//     static const char *getCommandString(uint8_t command)
+//     {
+//         strcpy_P(commandBuff, (char *)pgm_read_word(&(getCommandPnt(command))));
+//         return commandBuff;
+//     }
+// };
+// #endif
 
 union DCAddress
 {
@@ -333,12 +361,12 @@ union DCAddress
     {
         DCAddress a(_baseAddress);
 
-        if (a.isParent())
-        {
+        // if (a.isParent())
+        // {
 
-            a.setChannel(channel());
-            address = a.address;
-        }
+        a.setChannel(channel());
+        address = a.address;
+        // }
     }
 
     bool operator==(unsigned long _address)
@@ -618,20 +646,12 @@ struct DCMessage
     void setAddress(unsigned long _address)
     {
         data.content.address.set(_address);
+    }
 
-        // DCAddress a(_address);
-
-        // if (a.isParent())
-        // {
-
-        //     uint8_t _channel = channel();
-        //     for (uint8_t n = 0; n < (DOOYA_DC::CHUNKS - 1); n++)
-        //     {
-        //         data.bytes[n] = (_address >> 8 * n) & 0xff;
-        //     }
-
-        //     setChannel(_channel);
-        // }
+    /** _address [0,268435455]  **/
+    void setBaseAddress(unsigned long _address)
+    {
+        setAddress(_address, channel());
     }
 #ifdef ARDUINO
     void debugBinary(Stream &s, char delimiter = ',')
@@ -708,25 +728,36 @@ struct DCMessage
         string st = "";
         char buff[6];
         uint8_t n;
-      
+
         for (n = 0; n < DOOYA_DC::CHUNKS; n++)
         {
-            sprintf(buff, "%#02x", data.bytes[n]);
+            sprintf(buff, "%#02x", data.byates[n]);
             st += buff;
             if (n < (DOOYA_DC::CHUNKS - 1))
                 st += delimiter;
-            
         }
-       
+
         return st;
     }
 
-    string
-    getCommandString()
+    string getCommandString()
     {
         return DOOYA_DC::getCommandString(command());
     }
-
+    void debugBase()
+    {
+        // debugHex();
+        // debugBinary();
+        cout << ("Base Address: ")
+             << (baseAddress())
+             << (" Channel: ")
+             << (to_string(channel()))
+             << (" Command: ")
+             << (to_string(command()))
+             << " "
+             << (DOOYA_DC::getCommandString(command()))
+             << endl;
+    }
     void debug()
     {
         // debugHex();
@@ -738,13 +769,16 @@ struct DCMessage
              << ("Base Address: ")
              << (baseAddress())
              << (" Channel: ")
-             << (channel())
-             << (" ")
+             << (to_string(channel()))
+             << (" Command: ")
+             << (to_string(command()))
+             << " "
              << (DOOYA_DC::getCommandString(command()))
              << endl;
     }
 #endif
-    void send(uint8_t pin)
+
+    void send(uint8_t pin, uint8_t sendRepeats, unsigned long repeatDelayMicros)
     {
         noInterrupts();
         pinMode(pin, OUTPUT);
@@ -754,7 +788,7 @@ struct DCMessage
         uint16_t w = 0;
         bool isHigh = false;
 
-        for (uint8_t r = 0; r < DC_SEND_REPEATS; r++)
+        for (uint8_t r = 0; r < sendRepeats; r++)
         {
             // sync pulse
             digitalWrite(pin, HIGH);
@@ -773,10 +807,16 @@ struct DCMessage
                 delayMicroseconds(DOOYA_DC::SYMBOL_PERIOD - w);
             }
 
-            delayMicroseconds(DC_SEND_REPEAT_DELAY);
+            delayMicroseconds(repeatDelayMicros);
         }
 
         interrupts();
+    }
+
+    void send(uint8_t pin)
+    {
+        send(pin, DC_SEND_REPEATS, DC_SEND_REPEAT_DELAY);
+       
     }
 
     void sendCommand(uint8_t _code, uint8_t pin)
@@ -1839,11 +1879,12 @@ public:
 
         return false;
     }
+    // P2A P2B
     bool isAddOrRemoveDevice()
     {
         return (startsWithDoubleP2() && !sameAddress());
     }
-
+    // P2 STOP P2
     bool isRemoveAllDevices()
     {
         if (settingsAvailable() && sameAddress())
@@ -1977,7 +2018,7 @@ protected:
                         }
                         else
                         {
-                            // debugValue("settings length error",settingsBuffer.length);
+
                             noError = false;
                         }
 
@@ -2116,8 +2157,6 @@ protected:
         re->onAllAddressesRemoved();
         // execute(_onAllAdressesRemoved);
     }
-    // void (*_onAdressRemoved)(DCAddress);
-    // void (*_onAllAdressesRemoved)(void);
 
 public:
     DCLinkedAddresses linkedAddresses;

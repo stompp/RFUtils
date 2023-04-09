@@ -1,4 +1,5 @@
 
+#include <avr/pgmspace.h>
 #include <dooyadc.h>
 
 #define RADIO_RX_PIN 2
