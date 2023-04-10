@@ -6,16 +6,16 @@
 #include <ArduinoJson.h>
 #include <ArduinoTrace.h>
 
-static const char MESSAGE_TYPE_KEY[] = "messageType";
-static const char MESSAGE_CONTENT_KEY[] = "messageContent";
-static const char DC_MESSAGE_KEY[] = "dc_message";
-static const char DC_SEND_KEY[] = "dc_send";
-static const char CHUNKS_KEY[] = "chunks";
 
-#define DC_RX_PIN 2
-#define DC_TX_PIN 8
-SoftwareSerial bluetooth(3, 4);
+static const char MESSAGE_TYPE_KEY[] PROGMEM = "messageType";
+static const char MESSAGE_CONTENT_KEY[] PROGMEM = "messageContent";
+static const char DC_MESSAGE_KEY[] PROGMEM = "dc_message";
+static const char DC_SEND_KEY[] PROGMEM = "dc_send";
+static const char CHUNKS_KEY[] PROGMEM = "chunks";
 
+#define DC_RX_PIN D2
+#define DC_TX_PIN D8
+SoftwareSerial bluetooth(D3, D4);
 
 #define DEBUG_SERIAL Serial
 #define SNIFFER_SERIAL bluetooth
@@ -79,9 +79,9 @@ void sendJson(DCMessage message)
     char temp[12];
     StaticJsonDocument<512> doc;
 
-    doc[(MESSAGE_TYPE_KEY)] = DC_MESSAGE_KEY;
+    doc[FPSTR(MESSAGE_TYPE_KEY)] = "dc_message";
 
-    JsonObject messageContent = doc.createNestedObject((MESSAGE_CONTENT_KEY));
+    JsonObject messageContent = doc.createNestedObject(FPSTR(MESSAGE_CONTENT_KEY));
 
     JsonArray messageContent_chunks = messageContent.createNestedArray("chunks");
 
@@ -123,7 +123,7 @@ void parseInput()
         doc.clear();
         deserializeJson(doc, buff);
 
-        const char *type = doc[(MESSAGE_TYPE_KEY)];
+        const char *type = doc[FPSTR(MESSAGE_TYPE_KEY)];
 
         if (strcmp_P(type, DC_SEND_KEY) == 0)
         {
@@ -131,7 +131,7 @@ void parseInput()
             // DEBUG_SERIAL.println("IS DC_SEND");
             for (uint8_t n = 0; n < DOOYA_DC::CHUNKS; n++)
             {
-                m.data.bytes[n] = doc[(MESSAGE_CONTENT_KEY)][n];
+                m.data.bytes[n] = doc[FPSTR(MESSAGE_CONTENT_KEY)][n];
             }
 
             //  m.debug(DEBUG_SERIAL);
@@ -151,9 +151,9 @@ void parseInput2()
     DeserializationError err = deserializeJson(doc, SNIFFER_SERIAL);
     // TRACE();
 
-    if (doc.containsKey((MESSAGE_TYPE_KEY)))
+    if (doc.containsKey(FPSTR(MESSAGE_TYPE_KEY)))
     {
-        const char *type = doc[(MESSAGE_TYPE_KEY)];
+        const char *type = doc[FPSTR(MESSAGE_TYPE_KEY)];
 
         if (strcmp_P(type, DC_SEND_KEY) == 0)
         {
@@ -161,7 +161,7 @@ void parseInput2()
             // DEBUG_SERIAL.println("IS DC_SEND");
             for (uint8_t n = 0; n < DOOYA_DC::CHUNKS; n++)
             {
-                m.data.bytes[n] = doc[(MESSAGE_CONTENT_KEY)][n];
+                m.data.bytes[n] = doc[FPSTR(MESSAGE_CONTENT_KEY)][n];
             }
 
             m.debug(DEBUG_SERIAL);
