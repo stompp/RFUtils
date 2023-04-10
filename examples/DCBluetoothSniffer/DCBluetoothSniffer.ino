@@ -5,17 +5,29 @@
 #include <SoftwareSerial.h>
 #include <ArduinoJson.h>
 #include <ArduinoTrace.h>
+#include <avr/pgmspace.h>
 
+// static const char MESSAGE_TYPE_KEY[] PROGMEM = "messageType";
+// static const char MESSAGE_CONTENT_KEY[] PROGMEM = "messageContent";
+// static const char DC_MESSAGE_KEY[] PROGMEM = "dc_message";
+// static const char DC_SEND_KEY[] PROGMEM = "dc_send";
+// static const char CHUNKS_KEY[] PROGMEM = "chunks";
 static const char MESSAGE_TYPE_KEY[] PROGMEM = "messageType";
-
 static const char MESSAGE_CONTENT_KEY[] PROGMEM = "messageContent";
 static const char DC_MESSAGE_KEY[] PROGMEM = "dc_message";
 static const char DC_SEND_KEY[] PROGMEM = "dc_send";
 static const char CHUNKS_KEY[] PROGMEM = "chunks";
+#if defined(ESP8266) || defined(ESP32)
 
 #define DC_RX_PIN D2
 #define DC_TX_PIN D8
 SoftwareSerial bluetooth(D3, D4);
+#else 
+#define FPSTR(X) (char*)pgm_read_word(&(X))
+#define DC_RX_PIN 2
+#define DC_TX_PIN 8
+SoftwareSerial bluetooth(3, 4);
+#endif
 
 #define DEBUG_SERIAL Serial
 #define SNIFFER_SERIAL bluetooth
@@ -33,7 +45,7 @@ void setup()
     bluetooth.begin(9600);
      bluetooth.setTimeout(100);
 
-    rx.init(D2);
+    rx.init(DC_RX_PIN);
     rx.setBounce(100);
     commandsQueue.setAddBounce(500);
 }
