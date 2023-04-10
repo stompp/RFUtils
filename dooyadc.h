@@ -4,171 +4,208 @@
 #include <arduino_utils.h>
 #include <millis_utils.h>
 #include <bit_array.h>
+#include <ArduinoPlatforms.h>
+
+#define DC_USE_PROGMEM 0
+
+#if DC_USE_PROGMEM == 1
+#define PROGMEM_ATTR PROGMEM
+#else
+#define PROGMEM_ATTR
+#endif
 
 #ifdef ARDUINO
+#if DC_USE_PROGMEM == 1
 #include <avr/pgmspace.h>
-#if defined(ESP8266) || defined(ESP32)
-// interrupt handlers and related code must be in RAM
-// ICACHE_RAM_ATTR is deprecated
-#define ISR_ATTR IRAM_ATTR
+#define PROGMEM_ATTR PROGMEM
 #else
-#define ISR_ATTR
+#define PROGMEM_ATTR
 #endif
+
+// #if defined(ESP8266) || defined(ESP32)
+// // interrupt handlers and related code must be in RAM
+// // ICACHE_RAM_ATTR is deprecated
+// #define ISR_ATTR IRAM_ATTR
+// #else
+// #define ISR_ATTR
+// #endif
 
 #elif defined(RPI)
 // #include <cstdlib>
 #include <iostream>
 #include <string>
 using namespace std;
-
+#define PROGMEM_ATTR
 #endif
 
 #define DC_ONLY_FULL_ISR 1
 
-#define DOOYA_DC_DEBUG 0
+#define DC_DEBUG 0
 
 #ifndef DC_SEND_REPEATS
 #define DC_SEND_REPEATS 8
 #endif
 
 #ifndef DC_SEND_REPEAT_DELAY
-#define DC_SEND_REPEAT_DELAY 100UL
+#define DC_SEND_REPEAT_DELAY 200UL
 #endif
 
 #ifndef DC_REPETITION_BOUNCE
 #define DC_REPETITION_BOUNCE 250UL
 #endif
 
-#define LINKING_TIMEOUT 10000UL
-#define COMMAND_TIMEOUT 3000UL
+#define DC_N_BASE_COMMANDS 15
+
+#define DC_M 0b10000011
+#define DC_P2 0b00110011
+#define DC_STOP 0b10101010
+#define DC_UP_PRESS 0b10001000
+#define DC_UP_RELEASE 0b1111000
+#define DC_DOWN_PRESS 0b11001100
+#define DC_DOWN_RELEASE 0b00111100
+#define DC_UP_AND_STOP 0b00000001
+#define DC_DOWN_AND_STOP 0b10000001
+#define DC_UP_AND_DOWN 0b10011110
+#define DC_UP_AND_STOP_AND_DOWN 0b01000001
+#define DC_HEARTBEAT 0b10001001
+#define DC_WIND_ALARM 0b11101001
+#define DC_SENSOR_UP 0b10101001
+#define DC_SENSOR_DOWN 0b11001001
+
+// Bits in message
+#define DC_N_BITS 40
+// Bytes in message
+#define DC_CHUNKS 5
+// Bytes in address
+#define DC_ADDRESS_CHUNKS 4
+// [4750, 4810] micros
+#define DC_SYNC_HIGH_WIDTH 4750
+//[1500,1600] micros
+#define DC_SYNC_LOW_WIDTH 1500
+// Pulse width for low symbol
+#define DC_LOW_WIDTH 345
+// Pulse width for high symbol 480
+#define DC_HIGH_WIDTH 700
+// Symbol period, maybe just 1000 is fine REAL 1020
+#define DC_SYMBOL_PERIOD 1020
+// Threshold to determine if it's high or low 400 500
+#define DC_WIDTH_THRESHOLD 600
+// Timeout for symbols errors 1200 1500
+#define DC_SYMBOL_TIMEOUT 1200
+// Sync Pulse Raised min duration 4000
+#define DC_SYNC_PULSE_RAISED_MIN 4000
+// Sync Pulse Raised max duration 4900
+#define DC_SYNC_PULSE_RAISED_MAX 4900
+// Sync Pulse Fallen min  900
+#define DC_SYNC_PULSE_FALLEN_MIN 900
+// Sync Pulse Fallen max duration 1600
+#define DC_SYNC_PULSE_FALLEN_MAX 1600
+#define DC_ADDRESS_MAX 0x0fffffffUL
+#define DC_CHANNEL_MASK 0xf0000000UL
+
+#define DC_LINKING_TIMEOUT 10000UL
+#define DC_COMMAND_TIMEOUT 3000UL
 
 #ifndef DC_MEMORY_SIZE
+
+#ifdef RPI
+#define DC_MEMORY_SIZE 50
+#else
 #define DC_MEMORY_SIZE 10
 #endif
+#endif
 
-// #define DC_ADDRESS_CHUNKS 4
-/**
- * @brief
- *
- */
-// const char M_STRING[] PROGMEM = "M";
-// const char P2_STRING[] PROGMEM = "P2";
-// const char UP_PRESSED_STRING[] PROGMEM = "UP_PRESSED";
-// const char UP_RELEASED_STRING[] PROGMEM = "UP_RELEASED";
-// const char STOP_STRING[] PROGMEM = "STOP";
-// const char DOWN_PRESSED_STRING[] PROGMEM = "DOWN_PRESSED";
-// const char DOWN_RELEASED_STRING[] PROGMEM = "DOWN_RELEASED";
-// const char UP_AND_STOP_STRING[] PROGMEM = "UP_AND_STOP";
-// const char DOWN_AND_STOP_STRING[] PROGMEM = "DOWN_AND_STOP";
-// const char UP_AND_DOWN_STRING[] PROGMEM = "UP_AND_DOWN";
-// const char UP_AND_STOP_AND_DOWN_STRING[] PROGMEM = "UP_AND_STOP_AND_DOWN";
-// const char HEARTBEAT_STRING[] PROGMEM = "HEARTBEAT";
-// const char WIND_ALARM_STRING[] PROGMEM = "WIND_ALARM";
-// const char SENSOR_DOWN_STRING[] PROGMEM = "SENSOR_DOWN";
-// const char SENSOR_UP_STRING[] PROGMEM = "SENSOR_UP";
-// const char UNKNOWN_STRING[] PROGMEM = "UNKNOWN";
+struct DCCommand
+{
 
-const char M_STRING[] = "M";
-const char P2_STRING[] = "P2";
-const char UP_PRESSED_STRING[] = "UP_PRESSED";
-const char UP_RELEASED_STRING[] = "UP_RELEASED";
-const char STOP_STRING[] = "STOP";
-const char DOWN_PRESSED_STRING[] = "DOWN_PRESSED";
-const char DOWN_RELEASED_STRING[] = "DOWN_RELEASED";
-const char UP_AND_STOP_STRING[] = "UP_AND_STOP";
-const char DOWN_AND_STOP_STRING[] = "DOWN_AND_STOP";
-const char UP_AND_DOWN_STRING[] = "UP_AND_DOWN";
-const char UP_AND_STOP_AND_DOWN_STRING[] = "UP_AND_STOP_AND_DOWN";
-const char HEARTBEAT_STRING[] = "HEARTBEAT";
-const char WIND_ALARM_STRING[] = "WIND_ALARM";
-const char SENSOR_DOWN_STRING[] = "SENSOR_DOWN";
-const char SENSOR_UP_STRING[] = "SENSOR_UP";
-const char UNKNOWN_STRING[] = "UNKNOWN";
+    uint8_t cmnd;
+    const char *str;
+};
+
+const char M_STRING[] PROGMEM_ATTR = "M";
+const char P2_STRING[] PROGMEM_ATTR = "P2";
+const char UP_PRESSED_STRING[] PROGMEM_ATTR = "UP_PRESSED";
+const char UP_RELEASED_STRING[] PROGMEM_ATTR = "UP_RELEASED";
+const char STOP_STRING[] PROGMEM_ATTR = "STOP";
+const char DOWN_PRESSED_STRING[] PROGMEM_ATTR = "DOWN_PRESSED";
+const char DOWN_RELEASED_STRING[] PROGMEM_ATTR = "DOWN_RELEASED";
+const char UP_AND_STOP_STRING[] PROGMEM_ATTR = "UP_AND_STOP";
+const char DOWN_AND_STOP_STRING[] PROGMEM_ATTR = "DOWN_AND_STOP";
+const char UP_AND_DOWN_STRING[] PROGMEM_ATTR = "UP_AND_DOWN";
+const char UP_AND_STOP_AND_DOWN_STRING[] PROGMEM_ATTR = "UP_AND_STOP_AND_DOWN";
+const char HEARTBEAT_STRING[] PROGMEM_ATTR = "HEARTBEAT";
+const char WIND_ALARM_STRING[] PROGMEM_ATTR = "WIND_ALARM";
+const char SENSOR_DOWN_STRING[] PROGMEM_ATTR = "SENSOR_DOWN";
+const char SENSOR_UP_STRING[] PROGMEM_ATTR = "SENSOR_UP";
+const char UNKNOWN_STRING[] PROGMEM_ATTR = "UNKNOWN";
+
+// #ifdef RPI
+
+const DCCommand DC_BASE_COMMANDS_DATA[DC_N_BASE_COMMANDS] = {
+
+    {DC_M, M_STRING},
+    {DC_P2, P2_STRING},
+    {DC_UP_PRESS, UP_PRESSED_STRING},
+    {DC_UP_RELEASE, UP_RELEASED_STRING},
+    {DC_STOP, STOP_STRING},
+    {DC_DOWN_PRESS, DOWN_PRESSED_STRING},
+    {DC_DOWN_RELEASE, DOWN_RELEASED_STRING},
+    {DC_UP_AND_STOP, UP_AND_STOP_STRING},
+    {DC_DOWN_AND_STOP, DOWN_AND_STOP_STRING},
+    {DC_UP_AND_DOWN, UP_AND_DOWN_STRING},
+    {DC_UP_AND_STOP_AND_DOWN, UP_AND_STOP_AND_DOWN_STRING},
+    {DC_HEARTBEAT, HEARTBEAT_STRING},
+    {DC_WIND_ALARM, WIND_ALARM_STRING},
+    {DC_SENSOR_DOWN, SENSOR_DOWN_STRING},
+    {DC_SENSOR_UP, SENSOR_UP_STRING}};
+
+// #endif
 
 struct DOOYA_DC
 {
+    /**
+     * RF protocol
+     * _|¯¯¯¯¯¯¯¯¯|___|¯|__|¯¯|_|¯|__|¯¯|_|¯|__|¯|__|¯¯|_|¯|__|¯¯|_|¯|__|¯¯|_....up to40 bits
+     * Message starts with a long high pulse about 4750 us length
+     * Then low for about 1500 us
+     * Then 40 bits
+     * Message is 4 bytes address, 1 byte command
+     * The 4 most significant bits of the forth address byte
+     * is the channel but they are shifted
+     **/
 
+    /**
+     * test outputs
+     * Short 353.7464788732394
+     * Long 714.6938775510204
+     * Period 1098.1538461538462
+     **/
     // Bits in message
     static const uint8_t N_BITS = 40;
     // Bytes in message
     static const uint8_t CHUNKS = 5;
     // Bytes in address
     static const uint8_t ADDRESS_CHUNKS = 4;
-    /**
-     * @brief DC Remote protocol
-     * Message starts with a long high pulse about 4750 us length
-     * Then low for about 1500 us
-     * Then 40 bits
-     * Message is 4 bytes address, 1 byte command
-     * The 4 most significant bits of the forth address is byte the channel
-     * ¿Is the encoding is big endian?
-     * ¿Is the base address 3,5 bytes length?
-     *
-     */
-
     // [4750, 4810] micros
     static const uint16_t SYNC_HIGH_WIDTH = 4750;
     //[1500,1600] micros
     static const uint16_t SYNC_LOW_WIDTH = 1500;
-
-    /**
-     * Short 353.7464788732394
-     * Long 714.6938775510204
-     * Period 1098.1538461538462
-     *
-     */
-
-    // TODO Test
-
-    // // Pulse width for low symbol
-    // static const uint16_t LOW_WIDTH = 350;
-    // // Pulse width for high symbol
-    // static const uint16_t HIGH_WIDTH = 700;
-
-    // // Symbol period, maybe just 1000 is fine
-    // static const uint16_t SYMBOL_PERIOD = 1100;
-
-    // // Threshold to determine if it's high or low
-    // static const uint16_t WIDTH_THRESHOLD = 400;
-
-    // // Timeout for symbols errors
-    // static const uint16_t SYMBOL_TIMEOUT = 1500;
-
-    // // Sync Pulse Raised min duration
-    // static const uint16_t SYNC_PULSE_RAISED_MIN = 4750;
-
-    // // Sync Pulse Raised max duration
-    // static const uint16_t SYNC_PULSE_RAISED_MAX = 4810;
-
-    // // Sync Pulse Fallen min duration
-    // static const uint16_t SYNC_PULSE_FALLEN_MIN = 1500;
-
-    // // Sync Pulse Fallen max duration
-    // static const uint16_t SYNC_PULSE_FALLEN_MAX = 1600;
-
     // Pulse width for low symbol
     static const uint16_t LOW_WIDTH = 345;
     // Pulse width for high symbol 480
     static const uint16_t HIGH_WIDTH = 700;
-
     // Symbol period, maybe just 1000 is fine REAL 1020
     static const uint16_t SYMBOL_PERIOD = 1020;
-
     // Threshold to determine if it's high or low 400 500
     static const uint16_t WIDTH_THRESHOLD = 600;
-
     // Timeout for symbols errors 1200 1500
     static const uint16_t SYMBOL_TIMEOUT = 1200;
-
     // Sync Pulse Raised min duration 4000
     static const uint16_t SYNC_PULSE_RAISED_MIN = 4000;
-
     // Sync Pulse Raised max duration 4900
     static const uint16_t SYNC_PULSE_RAISED_MAX = 4900;
-
     // Sync Pulse Fallen min  900
     static const uint16_t SYNC_PULSE_FALLEN_MIN = 900;
-
     // Sync Pulse Fallen max duration 1600
     static const uint16_t SYNC_PULSE_FALLEN_MAX = 1600;
 
@@ -201,101 +238,74 @@ struct DOOYA_DC
         return ((code != M) && (code != P2));
     }
     // #ifdef RPI
+    static uint8_t getCommandForString(const char *s)
+    {
+        for (uint8_t n = 0; n < DC_N_BASE_COMMANDS; n++)
+        {
+            if (strcmp(s, DC_BASE_COMMANDS_DATA[n].str) == 0)
+            {
+
+                return DC_BASE_COMMANDS_DATA[n].cmnd;
+            }
+        }
+        return 0;
+    }
+
     static const char *getCommandString(uint8_t command)
     {
-        switch (command)
+
+        for (uint8_t n = 0; n < DC_N_BASE_COMMANDS; n++)
         {
-        case DOOYA_DC::M:
-            return M_STRING;
-        case DOOYA_DC::P2:
-            return P2_STRING;
-        case DOOYA_DC::UP_PRESS:
-            return UP_PRESSED_STRING;
-        case DOOYA_DC::UP_RELEASE:
-            return UP_RELEASED_STRING;
-        case DOOYA_DC::STOP:
-            return STOP_STRING;
-        case DOOYA_DC::DOWN_PRESS:
-            return DOWN_PRESSED_STRING;
-        case DOOYA_DC::DOWN_RELEASE:
-            return DOWN_RELEASED_STRING;
-        case DOOYA_DC::UP_AND_STOP:
-            return UP_AND_STOP_STRING;
-        case DOOYA_DC::DOWN_AND_STOP:
-            return DOWN_AND_STOP_STRING;
-        case DOOYA_DC::UP_AND_DOWN:
-            return UP_AND_DOWN_STRING;
-        case DOOYA_DC::UP_AND_STOP_AND_DOWN:
-            return UP_AND_STOP_AND_DOWN_STRING;
-        case DOOYA_DC::HEARTBEAT:
-            return HEARTBEAT_STRING;
-        case DOOYA_DC::WIND_ALARM:
-            return WIND_ALARM_STRING;
-        case DOOYA_DC::SENSOR_DOWN:
-            return SENSOR_DOWN_STRING;
-        case DOOYA_DC::SENSOR_UP:
-            return SENSOR_UP_STRING;
-
-        default:
-
-            break;
+            if (DC_BASE_COMMANDS_DATA[n].cmnd == command)
+                return DC_BASE_COMMANDS_DATA[n].str;
         }
         return UNKNOWN_STRING;
     }
+
+    // #else
+    //     static const char *getCommandString(uint8_t command)
+    //     {
+    //         switch (command)
+    //         {
+    //         case DOOYA_DC::M:
+    //             return M_STRING;
+    //         case DOOYA_DC::P2:
+    //             return P2_STRING;
+    //         case DOOYA_DC::UP_PRESS:
+    //             return UP_PRESSED_STRING;
+    //         case DOOYA_DC::UP_RELEASE:
+    //             return UP_RELEASED_STRING;
+    //         case DOOYA_DC::STOP:
+    //             return STOP_STRING;
+    //         case DOOYA_DC::DOWN_PRESS:
+    //             return DOWN_PRESSED_STRING;
+    //         case DOOYA_DC::DOWN_RELEASE:
+    //             return DOWN_RELEASED_STRING;
+    //         case DOOYA_DC::UP_AND_STOP:
+    //             return UP_AND_STOP_STRING;
+    //         case DOOYA_DC::DOWN_AND_STOP:
+    //             return DOWN_AND_STOP_STRING;
+    //         case DOOYA_DC::UP_AND_DOWN:
+    //             return UP_AND_DOWN_STRING;
+    //         case DOOYA_DC::UP_AND_STOP_AND_DOWN:
+    //             return UP_AND_STOP_AND_DOWN_STRING;
+    //         case DOOYA_DC::HEARTBEAT:
+    //             return HEARTBEAT_STRING;
+    //         case DOOYA_DC::WIND_ALARM:
+    //             return WIND_ALARM_STRING;
+    //         case DOOYA_DC::SENSOR_DOWN:
+    //             return SENSOR_DOWN_STRING;
+    //         case DOOYA_DC::SENSOR_UP:
+    //             return SENSOR_UP_STRING;
+
+    //         default:
+
+    //             break;
+    //         }
+    //         return UNKNOWN_STRING;
+    //     }
+    // #endif
 };
-
-#ifdef RPI
-#define DC_N_BASE_COMMANDS 15
-struct DCBaseCommand
-{
-
-    uint8_t cmnd;
-    const char *str;
-};
-
-const DCBaseCommand DC_BASE_COMMANDS_DATA[DC_N_BASE_COMMANDS] = {
-
-    {DOOYA_DC::M, M_STRING},
-    {DOOYA_DC::P2, P2_STRING},
-    {DOOYA_DC::UP_PRESS, UP_PRESSED_STRING},
-    {DOOYA_DC::UP_RELEASE, UP_RELEASED_STRING},
-    {DOOYA_DC::STOP, STOP_STRING},
-    {DOOYA_DC::DOWN_PRESS, DOWN_PRESSED_STRING},
-    {DOOYA_DC::DOWN_RELEASE, DOWN_RELEASED_STRING},
-    {DOOYA_DC::UP_AND_STOP, UP_AND_STOP_STRING},
-    {DOOYA_DC::DOWN_AND_STOP, DOWN_AND_STOP_STRING},
-    {DOOYA_DC::UP_AND_DOWN, UP_AND_DOWN_STRING},
-    {DOOYA_DC::UP_AND_STOP_AND_DOWN, UP_AND_STOP_AND_DOWN_STRING},
-    {DOOYA_DC::HEARTBEAT, HEARTBEAT_STRING},
-    {DOOYA_DC::WIND_ALARM, WIND_ALARM_STRING},
-    {DOOYA_DC::SENSOR_DOWN, SENSOR_DOWN_STRING},
-    {DOOYA_DC::SENSOR_UP, SENSOR_UP_STRING}};
-
-uint8_t getDCCommandForString(const char *s)
-{
-    for (uint8_t n = 0; n < DC_N_BASE_COMMANDS; n++)
-    {
-        if (strcmp(s, DC_BASE_COMMANDS_DATA[n].str) == 0)
-        {
-
-            return DC_BASE_COMMANDS_DATA[n].cmnd;
-        }
-    }
-    return 0;
-}
-
-const char *getDCCommandStringForCommand(uint8_t c)
-{
-
-    for (uint8_t n = 0; n < DC_N_BASE_COMMANDS; n++)
-    {
-        if (DC_BASE_COMMANDS_DATA[n].cmnd == c)
-            return DC_BASE_COMMANDS_DATA[n].str;
-    }
-    return UNKNOWN_STRING;
-}
-
-#endif
 
 //     static const char *getCommandString(uint8_t command)
 //     {
@@ -680,7 +690,7 @@ struct DCMessage
         s.println(data.bytes[n], HEX);
     }
 
-    String getCommandString()
+    const char *getCommandString()
     {
         return DOOYA_DC::getCommandString(command());
     }
@@ -731,7 +741,7 @@ struct DCMessage
 
         for (n = 0; n < DOOYA_DC::CHUNKS; n++)
         {
-            sprintf(buff, "%#02x", data.byates[n]);
+            sprintf(buff, "%#02x", data.bytes[n]);
             st += buff;
             if (n < (DOOYA_DC::CHUNKS - 1))
                 st += delimiter;
@@ -740,7 +750,7 @@ struct DCMessage
         return st;
     }
 
-    string getCommandString()
+    const char *getCommandString()
     {
         return DOOYA_DC::getCommandString(command());
     }
@@ -816,7 +826,6 @@ struct DCMessage
     void send(uint8_t pin)
     {
         send(pin, DC_SEND_REPEATS, DC_SEND_REPEAT_DELAY);
-       
     }
 
     void sendCommand(uint8_t _code, uint8_t pin)
@@ -913,7 +922,7 @@ protected:
         if ((t - rising_start) > DOOYA_DC::SYMBOL_TIMEOUT)
         {
             START();
-#if DOOYA_DC_DEBUG
+#if DC_DEBUG
             Serial.println("STO");
 #endif
         }
@@ -945,7 +954,7 @@ protected:
             {
                 _available = 1;
                 buffMsg.set(buffer.data());
-#if DOOYA_DC_DEBUG
+#if DC_DEBUG
                 buffMsg.debug();
 #endif
                 START();
@@ -957,7 +966,7 @@ protected:
         }
         else
         {
-#if DOOYA_DC_DEBUG
+#if DC_DEBUG
             Serial.println("BPE");
 #endif
             START();
@@ -2033,7 +2042,7 @@ protected:
 
                     flush();
                 }
-                else if (elapsedMillis(lastCommand) > COMMAND_TIMEOUT)
+                else if (elapsedMillis(lastCommand) > DC_COMMAND_TIMEOUT)
                 {
                     //  debug("Settings timeout");
                     noError = false;
@@ -2292,10 +2301,10 @@ public:
         listeningStart = lastCommand = millis();
         bool error;
         settingsBuffer.clear();
-        while (elapsedMillis(listeningStart) < LINKING_TIMEOUT)
+        while (elapsedMillis(listeningStart) < DC_LINKING_TIMEOUT)
         {
             delay(0);
-            if (elapsedMillis(lastCommand) > COMMAND_TIMEOUT)
+            if (elapsedMillis(lastCommand) > DC_COMMAND_TIMEOUT)
             {
                 // debug("command timeout");
                 settingsBuffer.clear();
